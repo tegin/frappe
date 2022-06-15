@@ -1827,6 +1827,8 @@ def get_list(doctype, *args, **kwargs):
 	        # filter as a list of dicts
 	        frappe.get_list("ToDo", fields="*", filters = {"description": ("like", "test%")})
 	"""
+	if get_meta(doctype).get("is_virtual"):
+		return get_doc(doctype).get_list(_dict(**kwargs))
 	import frappe.model.db_query
 
 	return frappe.model.db_query.DatabaseQuery(doctype).execute(*args, **kwargs)
