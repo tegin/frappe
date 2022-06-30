@@ -74,7 +74,10 @@ class DocTags:
 
 	def get_tags(self, dn):
 		"""returns tag for a particular item"""
-		return (frappe.db.get_value(self.dt, dn, "_user_tags", ignore=1) or "").strip()
+		if not frappe.get_meta(self.dt).get("is_virtual"):
+			return (frappe.db.get_value(self.dt, dn, "_user_tags", ignore=1) or "").strip()
+		else:
+			return frappe.get_doc(self.dt).get_value(self.dt, dn)._user_tags
 
 	def add(self, dn, tag):
 		"""add a new user tag"""
@@ -103,10 +106,15 @@ class DocTags:
 			tl = unique(filter(lambda x: x, tl))
 			tags = "," + ",".join(tl)
 		try:
-			frappe.db.sql(
-				"update `tab%s` set _user_tags=%s where name=%s" % (self.dt, "%s", "%s"), (tags, dn)
-			)
-			doc = frappe.get_doc(self.dt, dn)
+			if frappe.get_meta(self.dt).get("is_virtual"):
+				doc = frappe.get_doc(self.dt).get_value(self.dt, dn)
+				doc._user_tags = tags
+				doc.db_update()
+			else:
+				frappe.db.sql(
+					"update `tab%s` set _user_tags=%s where name=%s" % (self.dt, "%s", "%s"), (tags, dn)
+				)
+				doc = frappe.get_doc(self.dt, dn)
 			update_tags(doc, tags)
 		except Exception as e:
 			if frappe.db.is_column_missing(e):

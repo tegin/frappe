@@ -1,4 +1,4 @@
-# Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
+	# Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: MIT. See LICENSE
 
 """Allow adding of likes to documents"""
@@ -34,8 +34,11 @@ def _toggle_like(doctype, name, add, user=None):
 		user = frappe.session.user
 
 	try:
-		liked_by = frappe.db.get_value(doctype, name, "_liked_by")
-
+		if not frappe.get_meta(doctype).get("is_virtual"):
+			liked_by = frappe.db.get_value(doctype, name, "_liked_by")
+		else:
+			virtual_doc = frappe.get_doc(doctype).get_value(doctype, name)
+			liked_by = virtual_doc._liked_by
 		if liked_by:
 			liked_by = json.loads(liked_by)
 		else:
@@ -51,8 +54,12 @@ def _toggle_like(doctype, name, add, user=None):
 			if user in liked_by:
 				liked_by.remove(user)
 				remove_like(doctype, name)
-
-		frappe.db.set_value(doctype, name, "_liked_by", json.dumps(liked_by), update_modified=False)
+		if not frappe.get_meta(doctype).get("is_virtual"):
+			frappe.db.set_value(doctype, name, "_liked_by", json.dumps(liked_by), update_modified=False)
+		else:
+			virtual_doc._liked_by
+			virtual_doc._liked_by = liked_by
+			virtual_doc.db_update()
 
 	except frappe.db.ProgrammingError as e:
 		if frappe.db.is_column_missing(e):
